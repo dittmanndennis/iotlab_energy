@@ -32,7 +32,7 @@ def casetxt(x):
   else:
     return "unknown"
 
-def parse(filename):
+def parse(filename,plot):
   df = pd.read_csv(filename,
           skiprows=9,
 #          nrows=10000,
@@ -40,6 +40,8 @@ def parse(filename):
           header=None,
           usecols=[3,4,5,6,7],
           names=['time_s','time_us','power','voltage','current'])
+
+  df = df[df['power'] > 0]
 
   df['time'] = df['time_s']+df['time_us']/1000000
 
@@ -69,10 +71,11 @@ def parse(filename):
   df['case'] = df.apply(lambda row: (int(row.name/case_rows)%CASES)+1, axis=1)
   df['case_part'] = df.apply(lambda row: int(row.name/(case_rows/3))%3, axis=1)
 
-  # Plot the power and the synchronization sequence
-  plt.plot(df['power'])
-  plt.plot(sync)
-  plt.show()
+  if plot:
+      # Plot the power and the synchronization sequence
+      plt.plot(df['power'])
+      plt.plot(sync)
+      plt.show()
 
   # Group by case (only middle segment)
   cases = df[df['case_part'] == 1].groupby(['case'])
@@ -81,44 +84,54 @@ def parse(filename):
     d['current_mean'] = np.mean(x['current'])*1000
     d['power_mean'] = np.mean(x['power'])*1000
     return pd.Series(d)
-  mean_current = cases.apply(agg_current)
-  #mean_current['current_mean'] = mean_current['current_mean']-min(mean_current['current_mean'])
-  #mean_current['power_mean'] = mean_current['power_mean']-min(mean_current['power_mean'])
-  return mean_current
+  means = cases.apply(agg_current)
 
-parser = argparse.ArgumentParser()
-parser.add_argument('file',nargs='+')
-args = parser.parse_args()
-pd.options.display.float_format = '{:,.2f}'.format
-
-first = True
-df = None
-for filename in args.file:
-  print(filename)
   m = re.search("m3-([0-9]*)\.oml",filename)
   assert(m)
-  result = parse(filename)
-  result['node'] = int(m.group(1))
-  if first:
-    df = result
-    first = False
-  else:
-    df = pd.concat((df,result))
+  means['node'] = int(m.group(1))
+  means['casetxt'] = means.apply(lambda x: casetxt(x.name),axis=1)
+  means = means[means['casetxt'] != 'unknown']
+  return means
 
-idle_power = np.min(df['power_mean'])
-idle_current = np.min(df['current_mean'])
+def print_node_result(df):
+    idle_power = np.min(df['power_mean'])
+    idle_current = np.min(df['current_mean'])
 
-print("Idle Power %i mW"%idle_power)
-print("Idle Current %i mA"%idle_current)
+    print("Idle Power %i mW"%idle_power)
+    print("Idle Current %i mA"%idle_current)
 
-def agg_all(x):
-  d = collections.OrderedDict()
-  d['casetxt'] = casetxt(x.iloc[0].name)
-  d['power_extra'] = "%i mW"%round(np.mean(x['power_mean'])-idle_power)
-  d['current_extra'] = "%i mA"%round(np.mean(x['current_mean'])-idle_current)
-  d['power_total'] = "%i mW"%round(np.mean(x['power_mean']))
-  d['current_total'] = "%i mA"%round(np.mean(x['current_mean']))
-  return pd.Series(d)
-df = df.groupby('case').apply(agg_all)
-df = df[df['casetxt'] != 'unknown']
-print(df)
+    def agg_all(x):
+      d = collections.OrderedDict()
+      d['casetxt'] = x['casetxt'].iloc[0]
+      d['power_extra'] = "%i mW"%round(np.mean(x['power_mean'])-idle_power)
+      d['current_extra'] = "%i mA"%round(np.mean(x['current_mean'])-idle_current)
+      d['power_total'] = "%i mW"%round(np.mean(x['power_mean']))
+      d['current_total'] = "%i mA"%round(np.mean(x['current_mean']))
+      return pd.Series(d)
+    df = df.groupby('case').apply(agg_all)
+    print(df)
+
+if __name__ == "__main__":
+  parser = argparse.ArgumentParser()
+  parser.add_argument('file',nargs='+')
+  parser.add_argument('-noplot',action="store_true",default=False)
+  args = parser.parse_args()
+  pd.options.display.float_format = '{:,.2f}'.format
+
+  first = True
+  df = None
+  for filename in args.file:
+    result = parse(filename,plot=not args.noplot)
+    print("Node %i"%result['node'].iloc[0])
+    print_node_result(result)
+
+    if first:
+      df = result
+      first = False
+    else:
+      df = pd.concat((df,result))
+
+  df['case'] = df.index
+  df = df.pivot(index='node',columns='case',values='power_mean')
+  df = df.rename(columns=casetxt)
+  df.to_csv('energy_results.csv')
