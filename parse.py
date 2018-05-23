@@ -86,7 +86,7 @@ def parse(filename,plot):
     return pd.Series(d)
   means = cases.apply(agg_current)
 
-  m = re.search("m3-([0-9]*)\.oml",filename)
+  m = re.search("m3[-_]([0-9]*)\.oml",filename)
   assert(m)
   means['node'] = int(m.group(1))
   means['casetxt'] = means.apply(lambda x: casetxt(x.name),axis=1)
