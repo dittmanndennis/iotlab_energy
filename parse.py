@@ -42,6 +42,11 @@ def parse(filename,plot):
           names=['time_s','time_us','power','voltage','current'])
 
   df = df[df['power'] > 0]
+  df = df[df['power'] < 1000]
+  df = df[df['current'] > 0]
+  df = df[df['current'] < 1000]
+  df = df[df['voltage'] > 0]
+  df = df[df['voltage'] < 1000]
 
   df['time'] = df['time_s']+df['time_us']/1000000
 
