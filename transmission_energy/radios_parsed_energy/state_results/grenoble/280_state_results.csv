@@ -1,0 +1,5 @@
+case,power_median,current_median,casetxt
+8,62.046,19.034,SLEEP
+9,103.206,31.761,RX_ON
+10,81.466,25.009,PLL_ON
+11,63.389,19.439,Idle

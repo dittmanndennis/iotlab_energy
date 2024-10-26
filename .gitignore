@@ -1,3 +1,13 @@
+# Plots
+*.svg
+
+# Data
+*.oml
+*.log
+
+# MacOS
+.DS_Store
+
 # Prerequisites
 *.d
 
