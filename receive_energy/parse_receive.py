@@ -102,11 +102,13 @@ def parse(path: PosixPath):
     transmissions = df.loc[np.where(df['case_part'].values == 1)]
     def adv_agg_consumed_energy(x: pd.DataFrame) -> pd.Series:
         d = collections.OrderedDict()
-        transmission_start_row = x['power'].rolling(transmission_rows).sum().idxmax() - transmission_rows + 1
-        transmission_measurements = x.loc[transmission_start_row:(transmission_start_row + transmission_rows - 1)]
+        transmission_end_row = x['power'].rolling(transmission_rows).sum().idxmax()
+
+        transmission_measurements = x.loc[(transmission_end_row - transmission_rows + 1):transmission_end_row]
         y_list_mW = 1000 * transmission_measurements['power'].values - csma_rx_idle_power
         y_list_mA = 1000 * transmission_measurements['current'].values - csma_rx_idle_current
         x_list_us = 1000000 * transmission_measurements['time_s'].values + transmission_measurements['time_us'].values
+
         if y_list_mW[0] < y_list_mW[-1]:
             x_list_us[0] = x_list_us[-1] - transmission_duration
         else:
@@ -115,7 +117,22 @@ def parse(path: PosixPath):
         mAh = np.trapezoid(y=y_list_mA, x=x_list_us) / (3600000000 / transmission_duration)
         d['mWh'] = mWh
         d['mAh'] = mAh
+        print("here")
+        curr_transmission = x.loc[(transmission_end_row - transmission_rows - 9):(transmission_end_row + 10)]
+        fig, axs = plt.subplots(1, 2, figsize=(8,4))
+        axs[0].plot(curr_transmission['time'].values - curr_transmission['time'].values[0], 1000 * curr_transmission['power'].values - sleep_power, 'o--', label='sensor')
+        axs[0].plot(x_list_us - curr_transmission['time'].values[0], y_list_mW, 'o--', label='transmission')
+        axs[0].set(xlabel="\u03bcs", ylabel="mW")
+        axs[0].legend(loc="lower left")
+        axs[1].plot(curr_transmission['time'].values - curr_transmission['time'].values[0], 1000 * curr_transmission['current'].values - sleep_current, 'o--', label='sensor')
+        axs[1].plot(x_list_us - curr_transmission['time'].values[0], y_list_mA, 'o--', label='transmission')
+        axs[1].set(xlabel="\u03bcs", ylabel="mA")
+        axs[1].legend(loc="lower left")
+        fig.tight_layout()
+        plt.show()
+        
         return pd.Series(d)
+    
     energy_consumption = transmissions.groupby(['case']).apply(adv_agg_consumed_energy, include_groups=False)
 
     avg_mWh_extra = np.mean(energy_consumption["mWh"])
@@ -157,26 +174,38 @@ if __name__ == "__main__":
         "avg_mAh_total": []
     }
 
-    pathlist = Path("/Users/dennis/Code/iotlab_measure_energy_consumption/raw_data_receive/").rglob("*.oml")
+    pathlist = Path("/Users/dennis/Code/IOTLAB_ENERGY/receive_energy/raw_data_receive/").rglob("*.oml")
     for path in pathlist:
         print(path.name)
         m = re.search(r"m3[-_]([0-9]*)[-_](.*?(?=\.oml))", str(path.name))
         assert(m)
         index.append(m.group(2))
 
-        avg_power_max_extra, avg_current_max_extra, csma_rx_idle_power, csma_rx_idle_current, avg_mWh_extra, avg_mAh_extra, csma_rx_idle_mWh_per_frame, csma_rx_idle_mAh_per_frame = parse(path)
-        data['avg_power_max_extra'].append(avg_power_max_extra)
-        data['avg_current_max_extra'].append(avg_current_max_extra)
-        data['csma_rx_idle_power'].append(csma_rx_idle_power)
-        data['csma_rx_idle_current'].append(csma_rx_idle_current)
-        data['avg_power_max_total'].append(avg_power_max_extra + csma_rx_idle_power)
-        data['avg_current_max_total'].append(avg_current_max_extra + csma_rx_idle_current)
-        data['avg_mWh_extra'].append(avg_mWh_extra)
-        data['avg_mAh_extra'].append(avg_mAh_extra)
-        data['csma_rx_idle_mWh_per_frame'].append(csma_rx_idle_mWh_per_frame)
-        data['csma_rx_idle_mAh_per_frame'].append(csma_rx_idle_mAh_per_frame)
-        data['avg_mWh_total'].append(avg_mWh_extra + csma_rx_idle_mWh_per_frame)
-        data['avg_mAh_total'].append(avg_mAh_extra + csma_rx_idle_mAh_per_frame)
+        df = pd.read_csv(path,
+            skiprows=9,
+    #       nrows=10000,
+            sep='\t',
+            header=None,
+            usecols=[3,4,5,6,7],
+            names=['time_s','time_us','power','voltage','current'])
+
+        plt.plot(df['power'], label="test")
+        plt.legend()
+        plt.show()
+
+        #avg_power_max_extra, avg_current_max_extra, csma_rx_idle_power, csma_rx_idle_current, avg_mWh_extra, avg_mAh_extra, csma_rx_idle_mWh_per_frame, csma_rx_idle_mAh_per_frame = parse(path)
+        #data['avg_power_max_extra'].append(avg_power_max_extra)
+        #data['avg_current_max_extra'].append(avg_current_max_extra)
+        #data['csma_rx_idle_power'].append(csma_rx_idle_power)
+        #data['csma_rx_idle_current'].append(csma_rx_idle_current)
+        #data['avg_power_max_total'].append(avg_power_max_extra + csma_rx_idle_power)
+        #data['avg_current_max_total'].append(avg_current_max_extra + csma_rx_idle_current)
+        #data['avg_mWh_extra'].append(avg_mWh_extra)
+        #data['avg_mAh_extra'].append(avg_mAh_extra)
+        #data['csma_rx_idle_mWh_per_frame'].append(csma_rx_idle_mWh_per_frame)
+        #data['csma_rx_idle_mAh_per_frame'].append(csma_rx_idle_mAh_per_frame)
+        #data['avg_mWh_total'].append(avg_mWh_extra + csma_rx_idle_mWh_per_frame)
+        #data['avg_mAh_total'].append(avg_mAh_extra + csma_rx_idle_mAh_per_frame)
 
     df = pd.DataFrame(data, index)
     df.to_csv('receive_energy_results.csv')

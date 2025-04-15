@@ -117,9 +117,9 @@ def parse(path: PosixPath, plot: bool):
                 visual.append(0.12)
         visual = np.repeat(visual, case_rows)
         # Plot the power and the synchronization sequence
-        plt.plot(df['power'], label="Power [W]")
-        plt.plot(sync, label="Synchronization Sequence")
-        plt.plot(np.append(np.repeat([0], len(sync)), visual), label="Cases")
+        plt.plot(df['power'])
+        #plt.plot(sync, label="Synchronization Sequence")
+        #plt.plot(np.append(np.repeat([0], len(sync)), visual), label="Cases")
         plt.legend()
         plt.xlabel("Measurement Number")
         plt.ylabel("Energy Consumption [W]")

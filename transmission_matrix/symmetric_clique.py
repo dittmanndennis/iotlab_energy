@@ -18,8 +18,8 @@ def parse(dir_path, path):
             df.iloc[i,j] = max_val
             df.iloc[j,i] = max_val
 
-    df.to_csv('%s/results/symmetric/indexed_transmission_matrices/%s.csv' % (dir_path, path.name))
-    df.to_csv('%s/results/symmetric/matlab_input/%s.csv' % (dir_path, path.name), header=False, index=False)
+    df.to_csv('%s/results/indexed_transmission_matrices/symmetric_%s.csv' % (dir_path, path.name))
+    df.to_csv('%s/results/matlab_input/symmetric_%s.csv' % (dir_path, path.name), header=False, index=False)
 
 if __name__ == "__main__":
     dir_path = os.path.dirname(os.path.realpath(__file__))

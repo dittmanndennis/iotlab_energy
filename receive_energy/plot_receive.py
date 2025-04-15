@@ -79,6 +79,6 @@ def parse(filename: PosixPath):
 if __name__ == "__main__":
     pd.options.display.float_format = '{:,.2f}'.format
 
-    pathlist = Path("/Users/dennis/Code/iotlab_measure_energy_consumption/NEW_raw_data_receive/").rglob("*.oml")
+    pathlist = Path("/Users/dennis/Code/IOTLAB_ENERGY/receive_energy/raw_data_OS_0.4/").rglob("*.oml")
     for path in pathlist:
         parse(path.name)

@@ -281,8 +281,8 @@ def parse(path: PosixPath, plot: bool, save_energy_states: bool, save_boxplots: 
             for j in range(len(x_list_us) - 1):
                 mW_mean += (y_list_mW[j] + y_list_mW[j+1]) / 2 * (x_list_us[j+1] - x_list_us[j])
                 mA_mean += (y_list_mA[j] + y_list_mA[j+1]) / 2 * (x_list_us[j+1] - x_list_us[j])
-            d['mW_mean'] = mW_mean / TRANSMISSION_DURATION
-            d['mA_mean'] = mA_mean / TRANSMISSION_DURATION
+            d['mW_mean'] = mW_mean / TRANSMISSION_DURATION # TODO: this should be median.
+            d['mA_mean'] = mA_mean / TRANSMISSION_DURATION #       using mean skews it for preparation and turn off period
             
             d['mWh'] = np.trapezoid(y=y_list_mW, x=x_list_us) / (3600000000 / TRANSMISSION_DURATION)
             d['mAh'] = np.trapezoid(y=y_list_mA, x=x_list_us) / (3600000000 / TRANSMISSION_DURATION)
@@ -413,13 +413,13 @@ def print_result(df: pd.DataFrame) -> None:
     print(df)
 
 if __name__ == "__main__":
-    plot = False
-    save_energy_states = True
-    save_boxplots = True
-    save_energy_power_plots = True
-    save_transmission_energy_dist = True
-    save_deployment_plot = True
-    save_total_plot = True
+    plot = True
+    save_energy_states = False
+    save_boxplots = False
+    save_energy_power_plots = False
+    save_transmission_energy_dist = False
+    save_deployment_plot = False
+    save_total_plot = False
 
     tx_power_levels = [-17, -12, -10, -7, -5, -4, -3, -2, -1, 0, 0.7, 1.3, 1.8, 2.3, 2.8, 3]
 
@@ -463,7 +463,7 @@ if __name__ == "__main__":
             assert(m)
             print("Current node: ", m.group(1))
 
-            if os.path.isfile('%s/radios_parsed_energy/transmission_results/%s/%s_transmission_results.csv' % (dir_path, deployment, m.group(1))):
+            if False and os.path.isfile('%s/radios_parsed_energy/transmission_results/%s/%s_transmission_results.csv' % (dir_path, deployment, m.group(1))):
                 df = pd.read_csv('%s/radios_parsed_energy/transmission_results/%s/%s_transmission_results.csv' % (dir_path, deployment, m.group(1)),
                                  usecols=['Unnamed: 0', 'median__mW_mean', 'median__mA_mean', 'median__mW_max', 'median__mA_max', 'median__mWh', 'median__mAh'],
                                  index_col=0)

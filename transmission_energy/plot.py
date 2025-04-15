@@ -2,15 +2,16 @@ from pathlib import Path, PosixPath
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 
 SYNC_SEQUENCE = 22
 BASE_CASES = 8
-TRANSMISSION_CASES = 1
-TRANSMISSION_REPETITIONS = 30
-CASE_DURATION = 5 # seconds
+POWER_LEVELS = 16
+TRANSMISSION_REPETITIONS = 1
+CASE_DURATION = 4 # seconds
 
-def parse(filename: PosixPath):
+def parse(filename: Path, dir_path: str):
     df = pd.read_csv(filename,
         skiprows=9,
 #       nrows=10000,
@@ -18,6 +19,8 @@ def parse(filename: PosixPath):
         header=None,
         usecols=[3,4,5,6,7],
         names=['time_s','time_us','power','voltage','current'])
+    energy_states = pd.read_csv("%s/results/energy_states_results.csv" % dir_path,
+                    usecols=['power_median', 'current_median', 'casetxt'])
         
     # remove outliers
     df = df[df['power'] > 0]
@@ -52,27 +55,30 @@ def parse(filename: PosixPath):
     start = np.argmax(correlation)
 
     # Remove rows before start
-    #df = df.iloc[start:].reset_index()
+    df = df.iloc[start:].reset_index()
 
     # Remove rows not relating to any case
-    #df = df[:-int(len(df.index)-(BASE_CASES + TRANSMISSION_REPETITIONS * TRANSMISSION_CASES)*case_rows)]
+    df = df[:-int(len(df.index)-(BASE_CASES + TRANSMISSION_REPETITIONS * POWER_LEVELS)*case_rows)]
 
     # Visualize cases
-    visual = []
-    for i in range(0, TRANSMISSION_REPETITIONS * TRANSMISSION_CASES):
-        if i%2 == 0:
-            visual.append(0.145)
-        else:
-            visual.append(0.15)
-    visual = np.repeat(visual, case_rows)
+    energy_results = pd.read_csv("%s/results/energy_results.csv" % dir_path)
+    visual_max = []
+    sleep_power = energy_states['power_median'].iloc[np.where(energy_states['casetxt'].values == "SLEEP")].values
+    for i in range(0, TRANSMISSION_REPETITIONS * POWER_LEVELS):
+        visual_max.append((energy_results['median__mW_max'][i] + sleep_power) / 1000)
+    visual_max = np.repeat(visual_max, case_rows)
     # Plot the power and the synchronization sequence
     plt.plot(df['power'])
-    plt.plot(np.append(sync, visual))
+    plt.plot(np.append(sync, visual_max))
+    plt.xlabel("Measurement Number")
+    plt.ylabel("Energy Consumption [W]")
     plt.show()
 
 if __name__ == "__main__":
     pd.options.display.float_format = '{:,.2f}'.format
+        
+    dir_path = os.path.dirname(os.path.realpath(__file__))
 
-    pathlist = Path("/Users/dennis/Code/iotlab_energy/transmission_energy/raw_data_transmit/").rglob("*.oml")
+    pathlist = Path("%s/A8_M3_raw_data/" % dir_path).rglob("*.oml")
     for path in pathlist:
-        parse(path)
+        parse(path, dir_path)
